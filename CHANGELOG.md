@@ -2,6 +2,15 @@
 
 All notable changes to the GCC Map View extension will be documented in this file.
 
+## [0.3.4] - 2026-06-23
+### Changed
+
+- Fixed the [issue #7](https://github.com/rderr/gcc_map_view/issues/7) that unconventional section naming schemes are not parsed and thus excluded.
+    - The [binutuls ld]() linker does not prescribe a convention.
+    - `ld` does fixate on max section name size (15) so now fixating.
+### Added
+- A settings entry called `gccMapView.excludeSymbols` where a RegEx symbol exclude string can be given to e.g. exclude debug or arm symbols from being included in the map view.
+
 ## [0.3.3] - 2026-03-07
 
 ### Changed

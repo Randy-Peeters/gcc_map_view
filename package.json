@@ -2,7 +2,7 @@
   "name": "gcc-map-view",
   "displayName": "GCC Map View",
   "description": "Visualize GCC linker map files (.map) and linker scripts (.ld) with a graphical memory map",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "license": "MIT",
   "author": "Rob Derr <robjderr@gmail.com>",
   "publisher": "RobDerr",
@@ -81,6 +81,15 @@
           "when": "gccMapView.hasLayout && resourceExtname =~ /\\.(c|cpp|cc|cxx|h|hpp|hxx|hh|s|S|asm|rs|zig|d)$/"
         }
       ]
+    },
+    "configuration": {
+      "properties": {
+        "gccMapView.excludeSections": {
+          "type": "string",
+          "default": "",
+          "description": "RegExp section exclusion (note: use json escape char's)"
+        }
+      }
     }
   },
   "scripts": {

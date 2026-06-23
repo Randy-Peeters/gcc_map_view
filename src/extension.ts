@@ -22,9 +22,13 @@ let activeDecorations: vscode.TextEditorDecorationType[] = [];
 let lastParsedUri: string | undefined;
 let lastParsedVersion: number | undefined;
 
+let excludeSections: RegExp | undefined = undefined;
+
 export function activate(context: vscode.ExtensionContext) {
 
-
+    // Acquire the user configuration fields
+    AcquireUserConfig();
+    
     // Command: Show Memory Map webview
     context.subscriptions.push(
         vscode.commands.registerCommand('gccMapView.showMemoryMap', () => {
@@ -99,6 +103,29 @@ export function activate(context: vscode.ExtensionContext) {
     if (vscode.window.activeTextEditor) {
         parseDocument(context, vscode.window.activeTextEditor.document);
     }
+
+    // Parse on configuration file change
+    vscode.workspace.onDidChangeConfiguration(e => {
+        if (e.affectsConfiguration('gccMapView.excludeSymbols')) {
+            AcquireUserConfig();
+
+            for (const doc of vscode.workspace.textDocuments) {
+                if (doc.fileName.endsWith('.map')) {
+                    parseDocument(context, doc, true);
+                }
+            }
+        }
+    });
+}
+
+function AcquireUserConfig() {
+    const user_config = vscode.workspace.getConfiguration('gccMapView');
+    const raw = user_config.get<string>('excludeSections', '').trim();
+    try {
+        excludeSections = raw ? new RegExp(raw) : undefined;
+    } catch {
+        excludeSections = undefined;
+    }
 }
 
 function showMemoryMap(context: vscode.ExtensionContext, layout: MemoryLayout, fileName?: string): void {
@@ -142,13 +169,13 @@ function findSection(sectionName: string) {
     return undefined;
 }
 
-function parseDocument(context: vscode.ExtensionContext, document: vscode.TextDocument): void {
+function parseDocument(context: vscode.ExtensionContext, document: vscode.TextDocument, force: boolean = false): void {
     const filePath = document.fileName;
     const ext = path.extname(filePath).toLowerCase();
 
     // Skip re-parsing if the document hasn't changed since last parse
     const docUri = document.uri.toString();
-    if (docUri === lastParsedUri && document.version === lastParsedVersion) {
+    if (docUri === lastParsedUri && document.version === lastParsedVersion && !force) {
         return;
     }
 
@@ -164,7 +191,7 @@ function parseDocument(context: vscode.ExtensionContext, document: vscode.TextDo
         if (!isGccMapFile(text)) {
             return;
         }
-        layout = parseMap(text);
+        layout = parseMap(text, excludeSections);
         layout.sourceFile = filePath;
     } else {
         return;

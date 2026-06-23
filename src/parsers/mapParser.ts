@@ -14,7 +14,8 @@ export function isGccMapFile(text: string): boolean {
     return /^Memory Configuration/im.test(text);
 }
 
-export function parseMap(text: string): MemoryLayout {
+export function parseMap(text: string, excludeSections?: RegExp): MemoryLayout {
+    
     const regions: MemoryRegion[] = [];
     const sections: Section[] = [];
     let discardedSize = 0;
@@ -24,7 +25,6 @@ export function parseMap(text: string): MemoryLayout {
     let currentSection: Section | undefined;
     let pendingSymbolName: string | undefined;
     let pendingSymbolLine: number = 0;
-
     const lines = text.split('\n');
 
     for (let i = 0; i < lines.length; i++) {
@@ -124,7 +124,7 @@ export function parseMap(text: string): MemoryLayout {
                 // Format: ".text           0x00000000    0x1234"
                 // Sometimes section name is on its own line, address+size on next
                 const outputSectionMatch = line.match(
-                    /^(\.[a-zA-Z_][\w.]*)\s+(0x[0-9a-fA-F]+)\s+(0x[0-9a-fA-F]+)/
+                    /^(\S{1,14})\s+(0x[0-9a-fA-F]+)\s+(0x[0-9a-fA-F]+)/
                 );
                 if (outputSectionMatch) {
                     // Close previous section's line range
@@ -138,13 +138,17 @@ export function parseMap(text: string): MemoryLayout {
                         symbols: [],
                         sourceLine: i,
                     };
-                    sections.push(currentSection);
-                    pendingSymbolName = undefined;
-                    break;
+                    if (excludeSections == undefined || !currentSection.name.match(excludeSections)) {
+                        sections.push(currentSection);
+                        pendingSymbolName = undefined;
+                        break;
+                    }
                 }
 
                 // Section name alone on a line (long name wraps)
-                const sectionNameOnly = line.match(/^(\.[a-zA-Z_][\w.]*)\s*$/);
+                const sectionNameOnly = line.match(
+                    /^([\S]{15,})\s*$/
+                );
                 if (sectionNameOnly) {
                     // Peek at next line for address+size
                     if (i + 1 < lines.length) {
@@ -164,9 +168,11 @@ export function parseMap(text: string): MemoryLayout {
                                 symbols: [],
                                 sourceLine: i,
                             };
-                            sections.push(currentSection);
-                            pendingSymbolName = undefined;
-                            i++; // skip the next line
+                            if (excludeSections == undefined || !currentSection.name.match(excludeSections)) {
+                                sections.push(currentSection);
+                                pendingSymbolName = undefined;
+                                i++; // skip the next line
+                            }
                         }
                     }
                     break;
